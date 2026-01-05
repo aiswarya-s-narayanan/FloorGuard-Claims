@@ -1,0 +1,7 @@
+{
+  "name": "FloorGuard Claims",
+  "description": "A streamlined, AI-assisted warranty claim settlement app for flooring solutions.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
