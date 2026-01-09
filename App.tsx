@@ -6,6 +6,7 @@ import IssueManagerStep from './screens/IssueManagerStep';
 import ReviewStep from './screens/ReviewStep';
 import SuccessStep from './screens/SuccessStep';
 import ClaimDetailsStep from './screens/ClaimDetailsStep';
+import Login from './screens/Login';
 import { ArrowLeft } from 'lucide-react';
 
 // Enhanced mock data with details
@@ -25,7 +26,7 @@ const INITIAL_CLAIMS: Claim[] = [
       issues: [
         {
           id: 'i1',
-          imageUrl: 'https://picsum.photos/100/100?random=1',
+          imageUrls: ['https://picsum.photos/100/100?random=1'],
           detectedIssue: 'Water Damage',
           remarks: 'Noticed swelling in the corner planks.',
           timestamp: 1698100000000
@@ -57,7 +58,7 @@ const INITIAL_CLAIMS: Claim[] = [
       issues: [
         {
           id: 'i2',
-          imageUrl: 'https://picsum.photos/100/100?random=2',
+          imageUrls: ['https://picsum.photos/100/100?random=2'],
           detectedIssue: 'Cracked Tile',
           remarks: 'Hairline cracks appeared after installation.',
           timestamp: 1694470000000
@@ -79,7 +80,7 @@ const INITIAL_DRAFT: DraftClaim = {
 };
 
 const App: React.FC = () => {
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.DASHBOARD);
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.LOGIN);
   const [claims, setClaims] = useState<Claim[]>(INITIAL_CLAIMS);
   const [draft, setDraft] = useState<DraftClaim>(INITIAL_DRAFT);
   const [lastSubmittedClaimId, setLastSubmittedClaimId] = useState<string>('');
@@ -185,12 +186,18 @@ const App: React.FC = () => {
 
   const renderScreen = () => {
     switch (currentScreen) {
+      case AppScreen.LOGIN:
+        return <Login onLogin={() => setCurrentScreen(AppScreen.DASHBOARD)} />;
       case AppScreen.DASHBOARD:
         return (
           <Dashboard
             claims={claims}
             onRaiseClaim={handleStartClaim}
             onViewClaim={handleViewClaim}
+            onLogout={() => {
+              resetDraft();
+              setCurrentScreen(AppScreen.LOGIN);
+            }}
           />
         );
       case AppScreen.WIZARD_INVOICE:

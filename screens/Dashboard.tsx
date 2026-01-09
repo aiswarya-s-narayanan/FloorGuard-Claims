@@ -1,21 +1,29 @@
 import React from 'react';
 import { Claim } from '../types';
 import ClaimCard from '../components/ClaimCard';
-import { Plus } from 'lucide-react';
+import { Plus, LogOut } from 'lucide-react';
 
 interface DashboardProps {
   claims: Claim[];
   onRaiseClaim: () => void;
   onViewClaim: (claim: Claim) => void;
+  onLogout: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ claims, onRaiseClaim, onViewClaim }) => {
+const Dashboard: React.FC<DashboardProps> = ({ claims, onRaiseClaim, onViewClaim, onLogout }) => {
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
       <div className="bg-emerald-600 px-6 pt-12 pb-8 text-white rounded-b-3xl shadow-lg relative z-0">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-3xl font-bold">My Claims</h1>
+          <button
+            onClick={onLogout}
+            className="p-2 hover:bg-emerald-500 rounded-full transition-colors flex items-center justify-center"
+            title="Logout"
+          >
+            <LogOut className="w-6 h-6" />
+          </button>
         </div>
         <p className="text-emerald-100 text-sm">Track and manage your flooring warranty claims</p>
       </div>

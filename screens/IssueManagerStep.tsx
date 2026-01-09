@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Issue, IssueStepView } from '../types';
 import ProgressStepper from '../components/ProgressStepper';
 import { Plus, Trash2, Camera, ChevronRight, Upload, Loader2, Info, ArrowLeft } from 'lucide-react';
+import { detectIssue } from "../api/IssueDetectionApi";
 
 interface IssueManagerStepProps {
   issues: Issue[];
@@ -17,38 +18,35 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
   // Capture State
   const [analyzing, setAnalyzing] = useState(false);
   const [currentImages, setCurrentImages] = useState<string[]>([]);
+  const [capturedFiles, setCapturedFiles] = useState<File[]>([]);
   const [detectedResult, setDetectedResult] = useState<string>('');
   const [remarks, setRemarks] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setCurrentImages(prev => [...prev, url]);
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files) as File[];
+      const newUrls = newFiles.map(file => URL.createObjectURL(file));
 
-      // If this is the first image, or user wants to keep adding, we stay in capture or move to a "ready to analyze" state?
-      // For now, let's keep them in CAPTURE view until they decide to analyze.
-      // But original flow went straight to analyzing. Let's start analyzing after the first one is added? 
-      // Or better, let them add multiple then click "Done".
-      // Let's change the flow: Show preview in CAPTURE view, allow adding more, then "Analyze".
-
-      // However, to stick to the plan: "Update `handleCapture` to append new images to `currentImages` instead of replacing."
-      // And "Display a horizontal scroll/grid of currently captured images."
+      setCurrentImages(prev => [...prev, ...newUrls]);
+      setCapturedFiles(prev => [...prev, ...newFiles]);
     }
   };
 
-  const startAnalysis = () => {
-    if (currentImages.length > 0) {
-      setAnalyzing(true);
-      setView(IssueStepView.ANALYZING);
+  const startAnalysis = async () => {
+    if (currentImages.length === 0) return;
 
-      // Simulate AI
-      setTimeout(() => {
-        setAnalyzing(false);
-        const outcomes = ['Broken Tile', 'Scratched Surface', 'Water Damage', 'Grout Discoloration'];
-        setDetectedResult(outcomes[Math.floor(Math.random() * outcomes.length)]);
-      }, 2000);
+    setAnalyzing(true);
+    setView(IssueStepView.ANALYZING);
+
+    try {
+      const result = await detectIssue(capturedFiles);
+      setDetectedResult(result.ai_detection_result);
+    } catch (error) {
+      console.error(error);
+      setDetectedResult("Detection failed");
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -63,6 +61,7 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
       });
       // Reset
       setCurrentImages([]);
+      setCapturedFiles([]);
       setDetectedResult('');
       setRemarks('');
       setView(IssueStepView.LIST);
@@ -186,7 +185,7 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
             <div className="space-y-4 animate-fade-in">
               <div className="flex items-center justify-between px-1">
                 <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Captured ({currentImages.length})</span>
-                <button onClick={() => setCurrentImages([])} className="text-xs text-red-500 font-medium hover:underline">Clear All</button>
+                <button onClick={() => { setCurrentImages([]); setCapturedFiles([]); }} className="text-xs text-red-500 font-medium hover:underline">Clear All</button>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {currentImages.map((img, i) => (
@@ -197,6 +196,7 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
                       onClick={(e) => {
                         e.stopPropagation();
                         setCurrentImages(prev => prev.filter((_, idx) => idx !== i));
+                        setCapturedFiles(prev => prev.filter((_, idx) => idx !== i));
                       }}
                       className="absolute top-1.5 right-1.5 bg-white/90 text-red-500 p-1.5 rounded-full shadow-sm hover:bg-red-50 transition-colors"
                     >

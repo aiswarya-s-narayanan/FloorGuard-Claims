@@ -52,6 +52,7 @@ export interface DraftClaim {
 }
 
 export enum AppScreen {
+  LOGIN = 'LOGIN',
   DASHBOARD = 'DASHBOARD',
   WIZARD_INVOICE = 'WIZARD_INVOICE',
   WIZARD_ISSUES = 'WIZARD_ISSUES',
