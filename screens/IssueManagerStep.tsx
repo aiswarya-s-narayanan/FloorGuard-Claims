@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Issue, IssueStepView } from '../types';
 import ProgressStepper from '../components/ProgressStepper';
-import { Plus, Trash2, Camera, ChevronRight, Upload, Loader2, Info, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Camera, ChevronRight, Upload, Loader2, Info, ArrowLeft, AlertTriangle, X } from 'lucide-react';
 import { detectIssue } from "../api/IssueDetectionApi";
 
 interface IssueManagerStepProps {
@@ -19,8 +19,13 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
   const [analyzing, setAnalyzing] = useState(false);
   const [currentImages, setCurrentImages] = useState<string[]>([]);
   const [capturedFiles, setCapturedFiles] = useState<File[]>([]);
+
   const [detectedResult, setDetectedResult] = useState<string>('');
+  const [shortDescription, setShortDescription] = useState<string>('');
+  const [severity, setSeverity] = useState<string>('');
   const [remarks, setRemarks] = useState('');
+  const [error, setError] = useState<string>('');
+  const [clarityWarning, setClarityWarning] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,14 +42,35 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
     if (currentImages.length === 0) return;
 
     setAnalyzing(true);
+    setError(''); // Reset error state
     setView(IssueStepView.ANALYZING);
 
     try {
+      console.log('Starting analysis with', capturedFiles.length, 'files');
       const result = await detectIssue(capturedFiles);
-      setDetectedResult(result.ai_detection_result);
+      console.log('Analysis result:', result);
+
+      // Extract data from the nested ai_detection_result object
+      const aiResult = result.ai_detection_result;
+
+      setDetectedResult(aiResult.issue_type);
+      setShortDescription(aiResult.short_description || '');
+      setSeverity(aiResult.severity || 'unknown');
+
+      // Check for image clarity
+      if (aiResult.image_clarity === 0) {
+        setClarityWarning(aiResult.detailed_description || aiResult.description || 'Low image clarity detected.');
+        setRemarks(''); // Don't populate remarks if clarity is low
+      } else {
+        setRemarks(aiResult.detailed_description || aiResult.description || ''); // Auto-populate remarks with API description
+      }
     } catch (error) {
-      console.error(error);
+      console.error('Detection error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Detection failed';
+      setError(errorMessage);
       setDetectedResult("Detection failed");
+      setSeverity('unknown');
+      setRemarks('');
     } finally {
       setAnalyzing(false);
     }
@@ -56,6 +82,7 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
         id: Date.now().toString(),
         imageUrls: currentImages,
         detectedIssue: detectedResult,
+        severity: severity,
         remarks: remarks,
         timestamp: Date.now(),
       });
@@ -63,6 +90,8 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
       setCurrentImages([]);
       setCapturedFiles([]);
       setDetectedResult('');
+      setShortDescription('');
+      setSeverity('');
       setRemarks('');
       setView(IssueStepView.LIST);
     }
@@ -72,6 +101,20 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
     fileInputRef.current?.click();
   };
 
+  const resetAnalysisState = () => {
+    setDetectedResult('');
+    setShortDescription('');
+    setSeverity('');
+    setRemarks('');
+    setError('');
+    setAnalyzing(false);
+  };
+
+  const goBackToCapture = () => {
+    resetAnalysisState();
+    setView(IssueStepView.CAPTURE);
+  };
+
   // --- SUB-VIEWS ---
 
   // 1. ANALYZING / RESULT VIEW
@@ -79,7 +122,7 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
     return (
       <div className="flex-1 flex flex-col h-full bg-white">
         <div className="bg-white p-4 flex items-center gap-2 shadow-sm border-b">
-          <button onClick={() => setView(IssueStepView.CAPTURE)} className="p-2 hover:bg-gray-100 rounded-full">
+          <button onClick={goBackToCapture} className="p-2 hover:bg-gray-100 rounded-full">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <h2 className="font-bold text-gray-800">Issue Analysis</h2>
@@ -111,35 +154,84 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
               ))}
             </div>
 
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
-              <div className="flex items-center gap-2 mb-1">
-                <Info className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">AI Detection Result</span>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="w-4 h-4 text-red-600" />
+                  <span className="text-xs font-bold text-red-600 uppercase tracking-wide">Error</span>
+                </div>
+                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-xs text-red-600 mt-2">Please check your network connection and try again.</p>
               </div>
+            )}
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">AI Detection Result</span>
+                </div>
+              </div>
+
               <p className="text-xl font-bold text-blue-900">{detectedResult}</p>
+              <div className="mt-2 text-sm space-y-1">
+                <div>
+                  <span className="font-semibold text-gray-700">Short Description: </span>
+                  <span className="text-gray-900 font-medium">{shortDescription}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-700">Severity: </span>
+                  <span className="text-gray-900 font-medium">{severity.charAt(0).toUpperCase() + severity.slice(1)}</span>
+                </div>
+              </div>
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Additional Remarks (Optional)</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Additional Remarks</label>
               <textarea
                 className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 outline-none text-gray-800 placeholder-gray-400 min-h-[100px]"
-                placeholder="Describe the issue in your own words..."
+                placeholder="Edit the description as needed..."
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
               ></textarea>
+              <p className="text-xs text-gray-500 mt-1">Auto-populated from AI. You can edit as needed.</p>
             </div>
 
             <div className="mt-auto">
-              <button onClick={saveIssue} className="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-emerald-700 transition-colors">
+              <button onClick={saveIssue} className="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-emerald-700 transition-colors" disabled={!!error}>
                 Add This Issue
               </button>
-              <button onClick={() => setView(IssueStepView.CAPTURE)} className="w-full mt-3 py-3 text-gray-500 font-medium">
+              <button onClick={goBackToCapture} className="w-full mt-3 py-3 text-gray-500 font-medium">
                 Retake Photo
               </button>
             </div>
           </div>
+        )
+        }
+
+        {/* Low Clarity Warning Popup */}
+        {clarityWarning && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden animate-scale-in">
+              <div className="bg-amber-50 p-6 flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+                  <AlertTriangle className="w-6 h-6 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Image Clarity Issue</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  {clarityWarning}
+                </p>
+                <button
+                  onClick={() => setClarityWarning(null)}
+                  className="mt-6 w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors shadow-lg shadow-amber-200"
+                >
+                  Understood
+                </button>
+              </div>
+            </div>
+          </div>
         )}
-      </div>
+      </div >
     );
   }
 
@@ -238,8 +330,10 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
           </div>
         )}
       </div>
-    );
+    )
   }
+
+
 
   // 3. LIST VIEW (Management)
   return (
@@ -267,7 +361,16 @@ const IssueManagerStep: React.FC<IssueManagerStepProps> = ({ issues, onAddIssue,
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <div className="flex justify-between items-start">
-                  <h4 className="font-bold text-gray-900 text-sm">Issue #{idx + 1}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-gray-900 text-sm">Issue #{idx + 1}</h4>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${issue.severity === 'severe' ? 'bg-red-500 text-white' :
+                      issue.severity === 'moderate' ? 'bg-orange-500 text-white' :
+                        issue.severity === 'minor' ? 'bg-yellow-500 text-white' :
+                          'bg-gray-400 text-white'
+                      }`}>
+                      {issue.severity?.toUpperCase() || 'N/A'}
+                    </span>
+                  </div>
                   <button onClick={() => onRemoveIssue(issue.id)} className="text-gray-400 hover:text-red-500">
                     <Trash2 className="w-4 h-4" />
                   </button>

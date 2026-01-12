@@ -15,7 +15,8 @@ export interface Issue {
   id: string;
   imageUrls: string[];
   detectedIssue: string; // From AI
-  remarks: string;
+  severity: string; // From AI (e.g., "minor", "moderate", "severe")
+  remarks: string; // Auto-populated from AI description, user can edit
   timestamp: number;
 }
 

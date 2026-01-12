@@ -68,11 +68,21 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ draft, onSubmit, onBack }) => {
                                 <div className="p-4">
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="text-xs text-gray-400 font-bold uppercase">Detected Type</span>
-                                        <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{issue.detectedIssue}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${issue.severity === 'severe' ? 'bg-red-500 text-white' :
+                                                issue.severity === 'moderate' ? 'bg-orange-500 text-white' :
+                                                    issue.severity === 'minor' ? 'bg-yellow-500 text-white' :
+                                                        'bg-gray-400 text-white'
+                                                }`}>
+                                                {issue.severity?.toUpperCase() || 'N/A'}
+                                            </span>
+                                            <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{issue.detectedIssue}</span>
+                                        </div>
                                     </div>
                                     {issue.remarks && (
                                         <div className="mt-2 pt-2 border-t border-gray-50">
-                                            <p className="text-xs text-gray-500 leading-relaxed">"{issue.remarks}"</p>
+                                            <p className="text-xs text-gray-500 font-semibold mb-1">Description:</p>
+                                            <p className="text-xs text-gray-600 leading-relaxed">"{issue.remarks}"</p>
                                         </div>
                                     )}
                                 </div>
