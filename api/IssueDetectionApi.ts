@@ -21,15 +21,12 @@ export async function detectIssue(
         formData.append("images", file); // MUST match FastAPI param
     });
 
-    const apiUrl = import.meta.env.VITE_ISSUE_DETECTION_API_URL || "https://vps-24bb0d6f.vps.ovh.ca:5015";
+    const apiUrl = import.meta.env.VITE_ISSUE_DETECTION_API_URL || "";
     const response = await fetch(
         `${apiUrl}/detect_issue`,
         {
             method: "POST",
             body: formData,
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-            },
         }
     );
 

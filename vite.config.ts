@@ -8,6 +8,13 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
+      proxy: {
+        '/detect_issue': {
+          target: 'https://vps-24bb0d6f.vps.ovh.ca:5015',
+          changeOrigin: true,
+          secure: false,
+        }
+      }
     },
     plugins: [react()],
     define: {

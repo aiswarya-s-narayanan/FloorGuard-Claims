@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+        {
+            "source": "/detect_issue",
+            "destination": "https://vps-24bb0d6f.vps.ovh.ca:5015/detect_issue"
+        }
+    ]
+}
