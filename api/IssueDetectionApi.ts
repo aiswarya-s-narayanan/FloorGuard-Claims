@@ -27,6 +27,9 @@ export async function detectIssue(
         {
             method: "POST",
             body: formData,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+            },
         }
     );
 
